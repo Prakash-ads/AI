@@ -1,0 +1,40 @@
+!pip install transformers datasets sentencepiece torch sacrebleu 
+from transformers import MarianMTModel, MarianTokenizer 
+from datasets import load_dataset 
+from sacrebleu.metrics import BLEU 
+model_name = "Helsinki-NLP/opus-mt-en-fr" 
+tokenizer = MarianTokenizer.from_pretrained(model_name) 
+model = MarianMTModel.from_pretrained(model_name) 
+dataset = load_dataset("opus100", "en-fr") 
+test_data = dataset["test"].select(range(200)) 
+references = [] 
+predictions = [] 
+english_samples = [] 
+true_samples = [] 
+pred_samples = [] 
+for sample in test_data: 
+eng = sample["translation"]["en"] 
+fr = sample["translation"]["fr"] 
+inputs = tokenizer(eng, return_tensors="pt", truncation=True, padding=True) 
+outputs = model.generate( 
+**inputs, 
+num_beams=5, 
+max_length=128, 
+early_stopping=True 
+) 
+pred = tokenizer.decode(outputs[0], skip_special_tokens=True) 
+ 
+english_samples.append(eng) 
+true_samples.append(fr) 
+pred_samples.append(pred) 
+references.append(fr) 
+predictions.append(pred) 
+bleu = BLEU() 
+score = bleu.corpus_score(predictions, [references]) 
+print("BLEU Score:", score.score) 
+print("\nSample Translation\n") 
+for i in range(5): 
+print("English :", english_samples[i]) 
+print("True French :", true_samples[i]) 
+print("Predicted French :", pred_samples[i]) 
+print()
